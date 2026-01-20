@@ -4,6 +4,18 @@ import os
 FILE_NAME = "expenses.csv"
 expenses = []
 
+def normalize_category(category: str) -> str:
+    c = category.strip().lower()
+
+    # Standardize common variants
+    mapping = {
+        "saving": "savings",
+        "savings": "savings",
+        "current": "current",
+        "default": "default",
+    }
+
+    return mapping.get(c, c)  # unknown categories stay as-is
 
 def show_menu():
     print("\n=== Expense Tracker ===")
@@ -32,7 +44,13 @@ def load_expenses():
     with open(FILE_NAME, mode="r", newline="", encoding="utf-8") as f:
         reader = csv.DictReader(f)
         for row in reader:
+            # Clean & normalize fields
+            row["amount"] = str(float(row["amount"]))  # normalize numeric format
+            row["category"] = normalize_category(row.get("category", ""))
+            row["note"] = row.get("note", "").strip()
+
             expenses.append(row)
+
 
 
 def save_expense_to_csv(expense):
@@ -50,7 +68,7 @@ def save_expense_to_csv(expense):
 
 def add_expense():
     amount = read_amount()
-    category = input("Enter category: ").strip().lower()
+    category = normalize_category(input("Enter category: "))
     note = input("Enter note: ").strip()
 
     expense = {
@@ -100,9 +118,49 @@ def show_summary():
     for cat, amt in sorted(by_category.items()):
         print(f"- {cat}: {amt:.2f}")
 
+def migrate_csv_if_needed():
+    if not os.path.exists(FILE_NAME):
+        return
+
+    backup_name = "expenses_backup.csv"
+
+    # Make backup once (don’t overwrite if it already exists)
+    if not os.path.exists(backup_name):
+        with open(FILE_NAME, "r", encoding="utf-8") as src, open(backup_name, "w", encoding="utf-8") as dst:
+            dst.write(src.read())
+
+    # Rewrite a cleaned version of expenses.csv
+    cleaned = []
+
+    with open(FILE_NAME, mode="r", newline="", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            try:
+                amount = float(row.get("amount", "").strip())
+            except ValueError:
+                continue  # skip broken rows
+
+            category = normalize_category(row.get("category", ""))
+            note = row.get("note", "").strip()
+
+            cleaned.append({
+                "amount": str(amount),
+                "category": category,
+                "note": note
+            })
+
+    # Write cleaned file
+    with open(FILE_NAME, mode="w", newline="", encoding="utf-8") as f:
+        fieldnames = ["amount", "category", "note"]
+        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(cleaned)
+
 
 def main():
+    migrate_csv_if_needed()
     load_expenses()
+
 
     while True:
         show_menu()

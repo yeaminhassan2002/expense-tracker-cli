@@ -1,1 +1,3 @@
-amount,category,note
+date,amount,category,note
+2026-01-28,250.0,savings,3
+2026-01-28,250.0,car service,3

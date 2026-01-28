@@ -174,11 +174,27 @@ def migrate_csv_if_needed():
         writer.writerows(cleaned)
 
 def monthly_summary():
-    month = input("Enter month (YYYY-MM): ").strip()
+    raw = input("Enter month (YYYY-MM): ").strip()
+
+    # Normalize common mistakes: "2026 1", "2026/01", "2026-1"
+    raw = raw.replace("/", "-").replace(" ", "-")
+
+    parts = raw.split("-")
+    if len(parts) != 2 or not parts[0].isdigit() or not parts[1].isdigit():
+        print("Invalid format. Use YYYY-MM (example: 2026-01).")
+        return
+
+    year = parts[0]
+    month_num = int(parts[1])
+    if month_num < 1 or month_num > 12:
+        print("Invalid month. Must be between 01 and 12.")
+        return
+
+    month = f"{year}-{month_num:02d}"  # force 2-digit month
 
     filtered = [e for e in expenses if e["date"].startswith(month)]
     if not filtered:
-        print("No expenses found for that month.")
+        print(f"No expenses found for {month}.")
         return
 
     total = 0.0
@@ -195,6 +211,7 @@ def monthly_summary():
     print("\nBy category:")
     for cat, amt in sorted(by_category.items()):
         print(f"- {cat}: {amt:.2f}")
+
 
 
 
